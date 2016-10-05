@@ -27,7 +27,8 @@ RUN apt-get install -y curl git wget gcc Cython make sudo openssl bzip2 libssl-d
                        libreadline6 libreadline6-dev \
                        sqlite3 libsqlite3-dev \
                        mecab libmecab-dev mecab-ipadic-utf8 xz-utils file \
-                       libhdf5-dev
+                       libhdf5-dev unzip
+RUN apt-get install -y emacs
 #################################################################################################################
 #           Python Setting
 #################################################################################################################
@@ -54,14 +55,15 @@ RUN echo 'Defaults env_keep += /usr/local/pyenv' > /etc/sudoers && \
 #################################################################################################
 #         Setting up Mecab
 #################################################################################################
-ADD mecab-0.996 /home/initial_tag_user/mecab-0.996
-RUN cd /home/initial_tag_user/mecab-0.996/ && \
+RUN curl -OL "https://github.com/taku910/mecab/archive/master.zip"
+RUN unzip master.zip
+ADD mecab-master /home/initial_tag_user/mecab
+RUN cd /home/initial_tag_user/mecab/mecab && \
     ./configure && \
     make && make check && make install && cd .. && \
     echo /usr/local/lib >> /etc/ld.so.conf && ldconfig
 #Mecab ipdic install
-ADD mecab-ipadic-2.7.0-20070801 /home/initial_tag_user/mecab-ipadic-2.7.0-20070801
-RUN cd /home/initial_tag_user/mecab-ipadic-2.7.0-20070801/ && \
+RUN cd /home/initial_tag_user/mecab/mecab-ipadic/ && \
     ./configure --with-charset=utf8 && \
     make && make install && cd ../
 #################################################################################################
@@ -89,16 +91,33 @@ RUN echo /usr/local/lib >> /etc/ld.so.conf && \
 #################################################################################################################
 ADD date.txt \
     /var/tmp
-RUN git clone https://github.com/SnowMasaya/Chainer-Slack-Twitter-Dialogue.git /home/docker_user/Chainer-Slack-Twitter-Dialogue && \
-    mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/Data
-ADD data \
-    ${docker_home}/Chainer-Slack-Twitter-Dialogue/Data/
-ADD data/twitter_data \
-    ${docker_home}/Chainer-Slack-Twitter-Dialogue/twitter/data
-ADD model_word_match \
-    ${docker_home}/Chainer-Slack-Twitter-Dialogue/model_word_match
-RUN chmod -R 777 ${docker_home}
+RUN git clone https://github.com/SnowMasaya/Chainer-Slack-Twitter-Dialogue.git ${docker_home}/Chainer-Slack-Twitter-Dialogue 
+RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/Data
+RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/dev
 RUN localedef -v -c -i ja_JP -f UTF-8 ja_JP.UTF-8; echo "";
+RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/tmp/
+
+RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/tmp/ && \
+    curl -OL "https://dumps.wikimedia.org/jawiki/latest/jawiki-latest-all-titles-in-ns0.gz"&& \
+    gzip -d jawiki-latest-all-titles-in-ns0.gz 
+RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/tmp/ && \
+    cat -n jawiki-latest-all-titles-in-ns0 | shuf -n 5000 | sort -nk1 | cut -c8-  > ../Data/jawiki-latest-random-titles-in-ns0
+RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/json && \
+    cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/tmp/ && \
+    curl -o projectnextnlp-chat-dialogue-corpus.zip -L "https://sites.google.com/site/dialoguebreakdowndetection/chat-dialogue-corpus/projectnextnlp-chat-dialogue-corpus.zip?attredirects=0&d=1" && \
+    unzip projectn*.zip && \
+    cp ${docker_home}/Chainer-Slack-Twitter-Dialogue/tmp/json/*/*.json ${docker_home}/Chainer-Slack-Twitter-Dialogue/dev/ 
+RUN find ${docker_home}/Chainer-Slack-Twitter-Dialogue/dev/*.json > ${docker_home}/Chainer-Slack-Twitter-Dialogue/util/list
 env LANG=ja_JP.UTF-8
+RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/word2vec &&\
+    /usr/local/venv/3.5.0/bin/python3 word2vec_execute.py &&\
+    mv player_2.txt\   player_2.txt     				    
+RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/util/ &&\
+    /usr/local/venv/3.5.0/bin/python3 data_load.py 
+RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/util/ &&\
+    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_1.txt &&\
+    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_2.txt 
 USER ${docker_user_name}
 WORKDIR ${docker_home}/Chainer-Slack-Twitter-Dialogue
+
+    
