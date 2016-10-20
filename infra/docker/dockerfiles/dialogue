@@ -91,9 +91,10 @@ RUN echo /usr/local/lib >> /etc/ld.so.conf && \
 #################################################################################################################
 ADD date.txt \
     /var/tmp
-RUN git clone https://github.com/SnowMasaya/Chainer-Slack-Twitter-Dialogue.git ${docker_home}/Chainer-Slack-Twitter-Dialogue 
+RUN git clone https://github.com/miyamamoto/Chainer-Slack-Twitter-Dialogue.git ${docker_home}/Chainer-Slack-Twitter-Dialogue 
 RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/Data
 RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/dev
+RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/model
 RUN localedef -v -c -i ja_JP -f UTF-8 ja_JP.UTF-8; echo "";
 RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/tmp/
 
@@ -110,13 +111,16 @@ RUN mkdir ${docker_home}/Chainer-Slack-Twitter-Dialogue/json && \
 RUN find ${docker_home}/Chainer-Slack-Twitter-Dialogue/dev/*.json > ${docker_home}/Chainer-Slack-Twitter-Dialogue/util/list
 env LANG=ja_JP.UTF-8
 RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/word2vec &&\
-    /usr/local/venv/3.5.0/bin/python3 word2vec_execute.py &&\
-    mv player_2.txt\   player_2.txt     				    
+    /usr/local/venv/3.5.0/bin/python3 word2vec_execute.py
 RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/util/ &&\
     /usr/local/venv/3.5.0/bin/python3 data_load.py 
 RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/util/ &&\
-    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_1.txt &&\
-    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_2.txt 
+    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_1.txt > ../Data/player_1_wakati&&\
+    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_2.txt > ../Data/player_2_wakati&&\
+    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_1.txt > ../Data/player_1_wakati.txt&&\
+    /usr/bin/mecab -Owakati -d /usr/local/lib/mecab/dic/mecab-ipadic-neologd player_2.txt > ../Data/player_2_wakati.txt
+RUN cd ${docker_home}/Chainer-Slack-Twitter-Dialogue/execute &&\
+    /usr/local/venv/3.5.0/bin/python3 execute_dialogue_attention.py 
 USER ${docker_user_name}
 WORKDIR ${docker_home}/Chainer-Slack-Twitter-Dialogue
 
