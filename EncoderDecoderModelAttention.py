@@ -43,7 +43,8 @@ class EncoderDecoderModelAttention:
         self.word2vecFlag = parameter_dict["word2vecFlag"]
         self.model = parameter_dict["model"]
         self.attention_dialogue   = parameter_dict["attention_dialogue"]
-        XP.set_library(False, 0)
+        #XP.set_library(False, 0)
+        XP.set_library(True, 0)
         self.XP = XP
 
     def forward(self, src_batch, trg_batch, src_vocab, trg_vocab, attention, is_training, generation_limit):
